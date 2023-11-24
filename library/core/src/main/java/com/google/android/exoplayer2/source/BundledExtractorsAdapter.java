@@ -27,6 +27,7 @@ import com.google.android.exoplayer2.extractor.PositionHolder;
 import com.google.android.exoplayer2.extractor.mp3.Mp3Extractor;
 import com.google.android.exoplayer2.upstream.DataReader;
 import com.google.android.exoplayer2.util.Assertions;
+import com.google.android.exoplayer2.util.CosTimeUtil;
 import com.google.android.exoplayer2.util.Util;
 import java.io.EOFException;
 import java.io.IOException;
@@ -67,10 +68,16 @@ public final class BundledExtractorsAdapter implements ProgressiveMediaExtractor
     if (extractor != null) {
       return;
     }
+
+    long createExtractorStartTime = CosTimeUtil.Companion.start("create extractor");
     Extractor[] extractors = extractorsFactory.createExtractors(uri, responseHeaders);
+    CosTimeUtil.Companion.end("create extractor", createExtractorStartTime);
+
     if (extractors.length == 1) {
       this.extractor = extractors[0];
     } else {
+
+      long sniffStartTime = CosTimeUtil.Companion.start("sniff"); 
       for (Extractor extractor : extractors) {
         try {
           if (extractor.sniff(extractorInput)) {
@@ -84,6 +91,8 @@ public final class BundledExtractorsAdapter implements ProgressiveMediaExtractor
           extractorInput.resetPeekPosition();
         }
       }
+      CosTimeUtil.Companion.end("sniff", sniffStartTime);
+      
       if (extractor == null) {
         throw new UnrecognizedInputFormatException(
             "None of the available extractors ("

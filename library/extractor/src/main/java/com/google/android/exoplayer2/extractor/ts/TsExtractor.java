@@ -227,21 +227,43 @@ public final class TsExtractor implements Extractor {
 
   // Extractor implementation.
 
+  /**
+   * 这个方法本质上就是要将输入的ExtractorInput seek到正确位置
+   * 比如输入的数据是：96,53,46,0x47,66,45,33……(188字节),0x47
+   * 那么sniff后，seek后调整的结果就应该是：0x47,66,45,33……(188字节),0x47
+   *
+   * 具体做法：两层循环，第一层定位0x47的开头位置；第二层找到所有5个packet的起始位置。
+   * startPosCandidate代表第一个packet的开头位置。
+   */
   @Override
   public boolean sniff(ExtractorInput input) throws IOException {
+
+    long tsExtractorStartTime = CosTimeUtil.Companion.start("TsExtractor sniff");
     byte[] buffer = tsPacketBuffer.getData();
     input.peekFully(buffer, 0, TS_PACKET_SIZE * SNIFF_TS_PACKET_COUNT);
     for (int startPosCandidate = 0; startPosCandidate < TS_PACKET_SIZE; startPosCandidate++) {
+      //循环188个字节
       // Try to identify at least SNIFF_TS_PACKET_COUNT packets starting with TS_SYNC_BYTE.
       boolean isSyncBytePatternCorrect = true;
       for (int i = 0; i < SNIFF_TS_PACKET_COUNT; i++) {
+        //循环5个包
+        //startPosCandidate = 0， i = 0；0位置（第一个packet开始位置）
+        //startPosCandidate = 0, i = 1；188位置（第二个packet开始位置）
+        //startPosCandidate = 0, i = 2；188*2位置（第三个packet开始位置）
+        //startPosCandidate = 0, i = 3；188*3位置（第四个packet开始位置）
+        //startPosCandidate = 0, i = 4；188*4位置（第五个packet开始位置）
+        //
         if (buffer[startPosCandidate + i * TS_PACKET_SIZE] != TS_SYNC_BYTE) {
+          //只要有一个packet的开始位置不为0x47，isSyncBytePatternCorrect则false，后续则一定返回false
+          //如果5个位置都通过了，则说明目前的起始位置是对的，则
           isSyncBytePatternCorrect = false;
           break;
         }
       }
       if (isSyncBytePatternCorrect) {
+        //如果当前5个位置是正确的，则将数据移动到startPosCandidate（第一个packet的开始位置）
         input.skipFully(startPosCandidate);
+        CosTimeUtil.Companion.end("TsExtractor sniff", tsExtractorStartTime);
         return true;
       }
     }

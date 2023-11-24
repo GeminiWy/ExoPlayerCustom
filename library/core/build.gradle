@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 apply from: "$gradle.ext.exoplayerSettingsDir/common_library_config.gradle"
+apply plugin: 'kotlin-android'
 
 android {
     defaultConfig {
@@ -47,6 +48,8 @@ dependencies {
     api project(modulePrefix + 'library-database')
     implementation 'androidx.annotation:annotation:' + androidxAnnotationVersion
     implementation 'androidx.core:core:' + androidxCoreVersion
+    implementation 'androidx.core:core-ktx:' + androidxCoreVersion
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     compileOnly 'com.google.code.findbugs:jsr305:' + jsr305Version
     compileOnly 'org.checkerframework:checker-qual:' + checkerframeworkVersion
     compileOnly 'org.checkerframework:checker-compat-qual:' + checkerframeworkCompatVersion

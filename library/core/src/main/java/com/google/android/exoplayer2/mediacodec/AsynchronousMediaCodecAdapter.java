@@ -32,6 +32,7 @@ import androidx.annotation.RequiresApi;
 import androidx.annotation.VisibleForTesting;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.decoder.CryptoInfo;
+import com.google.android.exoplayer2.util.CosTimeUtil;
 import com.google.android.exoplayer2.util.TraceUtil;
 import com.google.common.base.Supplier;
 import java.io.IOException;
@@ -92,6 +93,8 @@ import java.nio.ByteBuffer;
       @Nullable MediaCodec codec = null;
       try {
         TraceUtil.beginSection("createCodec:" + codecName);
+
+        long createCodecTime = CosTimeUtil.Companion.start("createCodec");
         codec = MediaCodec.createByCodecName(codecName);
         codecAdapter =
             new AsynchronousMediaCodecAdapter(
@@ -99,6 +102,8 @@ import java.nio.ByteBuffer;
                 callbackThreadSupplier.get(),
                 queueingThreadSupplier.get(),
                 synchronizeCodecInteractionsWithQueueing);
+        CosTimeUtil.Companion.end("createCodec", createCodecTime);
+
         TraceUtil.endSection();
         codecAdapter.initialize(
             configuration.mediaFormat,
@@ -153,11 +158,19 @@ import java.nio.ByteBuffer;
       int flags) {
     asynchronousMediaCodecCallback.initialize(codec);
     TraceUtil.beginSection("configureCodec");
+
+    long configureCodecTime = CosTimeUtil.Companion.start("configureCodec");
     codec.configure(mediaFormat, surface, crypto, flags);
+    CosTimeUtil.Companion.end("configureCodec", configureCodecTime);
+    
     TraceUtil.endSection();
     bufferEnqueuer.start();
     TraceUtil.beginSection("startCodec");
+
+    long startCodecTime = CosTimeUtil.Companion.start("startCodec");
     codec.start();
+    CosTimeUtil.Companion.end("startCodec", startCodecTime);
+
     TraceUtil.endSection();
     state = STATE_INITIALIZED;
   }

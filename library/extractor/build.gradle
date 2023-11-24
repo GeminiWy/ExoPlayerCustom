@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 apply from: "$gradle.ext.exoplayerSettingsDir/common_library_config.gradle"
+apply plugin: 'kotlin-android'
 
 android {
     buildTypes {
@@ -25,6 +26,8 @@ android {
 
 dependencies {
     implementation 'androidx.annotation:annotation:' + androidxAnnotationVersion
+    implementation 'androidx.core:core-ktx:' + androidxCoreVersion
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     implementation project(modulePrefix + 'library-common')
     // TODO(b/203752187): Remove this dependency.
     implementation project(modulePrefix + 'library-decoder')
