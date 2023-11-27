@@ -27,6 +27,7 @@ import java.util.Map;
 /**
  * {@link DataSource} wrapper which keeps track of bytes transferred, redirected uris, and response
  * headers.
+ * 有重定向的时候，会维护最终的请求和响应头
  */
 public final class StatsDataSource implements DataSource {
 

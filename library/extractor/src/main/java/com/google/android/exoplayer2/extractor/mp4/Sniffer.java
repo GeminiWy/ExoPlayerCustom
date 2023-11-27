@@ -108,6 +108,7 @@ import java.io.IOException;
   private static boolean sniffInternal(ExtractorInput input, boolean fragmented, boolean acceptHeic)
       throws IOException {
     long inputLength = input.getLength();
+    //如果input长度大于4k，则取4k；否则取input长度。
     int bytesToSearch =
         (int)
             (inputLength == C.LENGTH_UNSET || inputLength > SEARCH_LENGTH
@@ -120,30 +121,44 @@ import java.io.IOException;
     boolean isFragmented = false;
     while (bytesSearched < bytesToSearch) {
       // Read an atom header.
-      int headerSize = Atom.HEADER_SIZE;
-      buffer.reset(headerSize);
+      int headerSize = Atom.HEADER_SIZE; //box header一共8个字节。前4个为size，后4个为type
+      buffer.reset(headerSize);//重置前8个字节
       boolean success =
-          input.peekFully(buffer.getData(), 0, headerSize, /* allowEndOfInput= */ true);
+          input.peekFully(buffer.getData(), 0, headerSize, /* allowEndOfInput= */ true);//读取前8个字节，塞入buffer中。
       if (!success) {
         // We've reached the end of the file.
         break;
       }
-      long atomSize = buffer.readUnsignedInt();
-      int atomType = buffer.readInt();
+
+
+      //至此，buffer的前8个字节是header
+
+
+      long atomSize = buffer.readUnsignedInt();//读取4个字节转为无符号整数，10进制数字。作为size
+      int atomType = buffer.readInt();//读取4个字节转为有符号整数。作为type
+
+      //atom表示box
       if (atomSize == Atom.DEFINES_LARGE_SIZE) {
+        //size为1，则要去largesize
         // Read the large atom size.
-        headerSize = Atom.LONG_HEADER_SIZE;
+        headerSize = Atom.LONG_HEADER_SIZE; //多8个字节为largeSize
+
         input.peekFully(
-            buffer.getData(), Atom.HEADER_SIZE, Atom.LONG_HEADER_SIZE - Atom.HEADER_SIZE);
-        buffer.setLimit(Atom.LONG_HEADER_SIZE);
-        atomSize = buffer.readLong();
+            buffer.getData(), Atom.HEADER_SIZE, Atom.LONG_HEADER_SIZE - Atom.HEADER_SIZE);//这里取largesize的8个字节
+        buffer.setLimit(Atom.LONG_HEADER_SIZE); //切换header最大为16字节
+        atomSize = buffer.readLong(); //取到largeSize
+
       } else if (atomSize == Atom.EXTENDS_TO_END_SIZE) {
+        //size为0，说明是最后一个box
         // The atom extends to the end of the file.
         long fileEndPosition = input.getLength();
         if (fileEndPosition != C.LENGTH_UNSET) {
+          //如果是文件末尾的box，则要取header的字节数+body一直到文件末尾的大小。
           atomSize = fileEndPosition - input.getPeekPosition() + headerSize;
         }
       }
+
+      //取到正确的box大小了
 
       if (atomSize < headerSize) {
         // The file is invalid because the atom size is too small for its header.
@@ -152,6 +167,7 @@ import java.io.IOException;
       bytesSearched += headerSize;
 
       if (atomType == Atom.TYPE_moov) {
+        //找到的是moov box，继续往下
         // We have seen the moov atom. We increase the search size to make sure we don't miss an
         // mvex atom because the moov's size exceeds the search length.
         bytesToSearch += (int) atomSize;
@@ -177,6 +193,7 @@ import java.io.IOException;
       int atomDataSize = (int) (atomSize - headerSize);
       bytesSearched += atomDataSize;
       if (atomType == Atom.TYPE_ftyp) {
+        //找到描述文件遵从的MP4规范与版本
         // Parse the atom and check the file type/brand is compatible with the extractors.
         if (atomDataSize < 8) {
           return false;
