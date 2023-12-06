@@ -18,6 +18,7 @@ package com.google.android.exoplayer2.extractor.ts;
 import static com.google.android.exoplayer2.extractor.ts.TsPayloadReader.FLAG_PAYLOAD_UNIT_START_INDICATOR;
 import static java.lang.annotation.ElementType.TYPE_USE;
 
+import android.os.Trace;
 import android.util.SparseArray;
 import android.util.SparseBooleanArray;
 import android.util.SparseIntArray;
@@ -37,9 +38,11 @@ import com.google.android.exoplayer2.extractor.ts.TsPayloadReader.DvbSubtitleInf
 import com.google.android.exoplayer2.extractor.ts.TsPayloadReader.EsInfo;
 import com.google.android.exoplayer2.extractor.ts.TsPayloadReader.TrackIdGenerator;
 import com.google.android.exoplayer2.util.Assertions;
+import com.google.android.exoplayer2.util.Log;
 import com.google.android.exoplayer2.util.ParsableBitArray;
 import com.google.android.exoplayer2.util.ParsableByteArray;
 import com.google.android.exoplayer2.util.TimestampAdjuster;
+import com.google.android.exoplayer2.util.TraceUtil;
 import com.google.android.exoplayer2.util.Util;
 import java.io.IOException;
 import java.lang.annotation.Documented;
@@ -240,7 +243,15 @@ public final class TsExtractor implements Extractor {
 
     long tsExtractorStartTime = CosTimeUtil.Companion.start("TsExtractor sniff");
     byte[] buffer = tsPacketBuffer.getData();
+
+    long pickFivePacketStart = CosTimeUtil.Companion.start("ts sniff pick five packet");
+      Trace.beginSection("peekFully five packet");
+//    TraceUtil.beginSection("peekFully five packet");
     input.peekFully(buffer, 0, TS_PACKET_SIZE * SNIFF_TS_PACKET_COUNT);
+    Trace.endSection();
+//    TraceUtil.endSection();
+    CosTimeUtil.Companion.end("ts sniff pick five packet", pickFivePacketStart);
+
     for (int startPosCandidate = 0; startPosCandidate < TS_PACKET_SIZE; startPosCandidate++) {
       //循环188个字节
       // Try to identify at least SNIFF_TS_PACKET_COUNT packets starting with TS_SYNC_BYTE.
@@ -254,8 +265,9 @@ public final class TsExtractor implements Extractor {
         //startPosCandidate = 0, i = 4；188*4位置（第五个packet开始位置）
         //
         if (buffer[startPosCandidate + i * TS_PACKET_SIZE] != TS_SYNC_BYTE) {
-          //只要有一个packet的开始位置不为0x47，isSyncBytePatternCorrect则false，后续则一定返回false
-          //如果5个位置都通过了，则说明目前的起始位置是对的，则
+          //只要有一个packet的开始位置不为0x47，isSyncBytePatternCorrect则false，表示当前startPosCandidate指向的位置不对
+          //如果5个位置都通过了，则说明目前的起始位置是对的，则指向该点作为读包起始位置
+          Log.d("wangyao", "cur pos is error, should move to next one");
           isSyncBytePatternCorrect = false;
           break;
         }

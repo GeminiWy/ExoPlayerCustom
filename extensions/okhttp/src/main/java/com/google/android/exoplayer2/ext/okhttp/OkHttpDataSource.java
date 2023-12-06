@@ -20,6 +20,7 @@ import static com.google.android.exoplayer2.util.Util.castNonNull;
 import static java.lang.Math.min;
 
 import android.net.Uri;
+import android.os.Trace;
 import androidx.annotation.Nullable;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlayerLibraryInfo;
@@ -533,7 +534,9 @@ public class OkHttpDataSource extends BaseDataSource implements HttpDataSource {
       readLength = (int) min(readLength, bytesRemaining);
     }
 
+    Trace.beginSection("okhttp read response");
     int read = castNonNull(responseByteStream).read(buffer, offset, readLength);
+    Trace.endSection();
     if (read == -1) {
       return C.RESULT_END_OF_INPUT;
     }

@@ -17,6 +17,7 @@ package com.google.android.exoplayer2.extractor;
 
 import static java.lang.Math.min;
 
+import android.os.Trace;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlayerLibraryInfo;
 import com.google.android.exoplayer2.upstream.DataReader;
@@ -143,10 +144,16 @@ public final class DefaultExtractorInput implements ExtractorInput {
   @Override
   public boolean peekFully(byte[] target, int offset, int length, boolean allowEndOfInput)
       throws IOException {
-    if (!advancePeekPosition(length, allowEndOfInput)) {
+    Trace.beginSection("advancePeekPosition");
+    boolean isNotAdvance = !advancePeekPosition(length, allowEndOfInput);
+    //是否能成功前进length长度
+    Trace.endSection();
+    if (isNotAdvance) {
       return false;
     }
+    Trace.beginSection("arraycopy");
     System.arraycopy(peekBuffer, peekBufferPosition - length, target, offset, length);
+    Trace.endSection();
     return true;
   }
 
@@ -157,11 +164,13 @@ public final class DefaultExtractorInput implements ExtractorInput {
 
   @Override
   public boolean advancePeekPosition(int length, boolean allowEndOfInput) throws IOException {
-    ensureSpaceForPeek(length);
+    ensureSpaceForPeek(length);//确定peekBuffer是否有合适的length空间
     int bytesPeeked = peekBufferLength - peekBufferPosition;
-    while (bytesPeeked < length) {
+    while (bytesPeeked < length) { //目前已经取到的数量达不到我们要copy的数量，则需要再去源头拿
+      Trace.beginSection("readFromUpstream");
       bytesPeeked =
           readFromUpstream(peekBuffer, peekBufferPosition, length, bytesPeeked, allowEndOfInput);
+      Trace.endSection();
       if (bytesPeeked == C.RESULT_END_OF_INPUT) {
         return false;
       }
